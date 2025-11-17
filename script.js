@@ -190,6 +190,10 @@ let selectedBall = null;
 let arrow = null;
 let selectionMode = null;
 
+// ===== NUEVO: CONTADOR DE GANADORES =====
+let winnerCount = 0;
+const PREDEFINED_WINNERS = [58, 147];
+
 const ballCountInput = document.getElementById('ballCount');
 const initButton = document.getElementById('initButton');
 const mixButton = document.getElementById('mixButton');
@@ -592,6 +596,9 @@ function initBalls() {
 
     createBalls(count);
     
+    // ===== NUEVO: RESETEAR CONTADOR DE GANADORES =====
+    winnerCount = 0;
+    
     mixButton.disabled = false;
     grabButton.disabled = true;
     winnerAnnouncement.classList.remove('show');
@@ -633,6 +640,45 @@ function showSelectionModal() {
     selectionModal.classList.add('show');
 }
 
+// ===== NUEVA FUNCIÓN: SELECCIONAR BOLITA CON LÓGICA ESPECIAL =====
+function selectBall(mode) {
+    let selectedNumber;
+    
+    if (mode === 'winner') {
+        // Para ganador: usar números predefinidos
+        if (winnerCount < PREDEFINED_WINNERS.length) {
+            selectedNumber = PREDEFINED_WINNERS[winnerCount];
+            winnerCount++;
+            
+            // Verificar si el número predefinido existe en las bolitas
+            const ball = balls.find(b => b.number === selectedNumber);
+            if (!ball) {
+                showStatus(`Error: El número ${selectedNumber} no está disponible`, 'error');
+                return null;
+            }
+            return ball;
+        } else {
+            // Si ya se usaron todos los predefinidos, seleccionar aleatorio
+            if (balls.length === 0) return null;
+            return balls[Math.floor(Math.random() * balls.length)];
+        }
+    } else {
+        // Para eliminar: NO usar los números predefinidos que aún no han salido
+        const availableBalls = balls.filter(ball => {
+            // Excluir los números ganadores que aún no han sido seleccionados
+            const remainingWinners = PREDEFINED_WINNERS.slice(winnerCount);
+            return !remainingWinners.includes(ball.number);
+        });
+        
+        if (availableBalls.length === 0) {
+            showStatus('Solo quedan números ganadores. ¡Usa la opción GANADOR! 🏆', 'warning');
+            return null;
+        }
+        
+        return availableBalls[Math.floor(Math.random() * availableBalls.length)];
+    }
+}
+
 async function grabBall(mode) {
     if (isAnimating || balls.length === 0) return;
     
@@ -668,7 +714,15 @@ async function grabBall(mode) {
     
     await sleep(movementDuration);
     
-    selectedBall = balls[Math.floor(Math.random() * balls.length)];
+    // ===== USAR LA NUEVA LÓGICA DE SELECCIÓN =====
+    selectedBall = selectBall(mode);
+    
+    if (!selectedBall) {
+        isAnimating = false;
+        mixButton.disabled = false;
+        grabButton.disabled = false;
+        return;
+    }
     
     showStatus('¡La flecha mágica viene! 🎯', 'info');
     
@@ -705,6 +759,7 @@ async function grabBall(mode) {
     
     winnerAnnouncement.classList.add('show');
     
+    // ===== ELIMINAR LA BOLITA DE LA ESFERA =====
     sphereGroup.remove(selectedBall.mesh);
     balls = balls.filter(b => b.number !== selectedBall.number);
     
