@@ -141,7 +141,6 @@ function startSadEmojis() {
     fallingEmojis = [];
     isAnimatingEmojis = false;
     
-    // Activar el canvas
     emojiCanvas.classList.add('active');
     
     for (let i = 0; i < 50; i++) {
@@ -161,7 +160,6 @@ function startHappyEmojis() {
     fallingEmojis = [];
     isAnimatingEmojis = false;
     
-    // Activar el canvas
     emojiCanvas.classList.add('active');
     
     for (let i = 0; i < 60; i++) {
@@ -576,6 +574,18 @@ function initBalls() {
         return;
     }
 
+    // Verificar si es la primera vez que se presiona el botón
+    const isFirstLoad = sessionStorage.getItem('hasInitialized');
+    
+    if (!isFirstLoad) {
+        // Primera vez: marcar como inicializado y recargar la página
+        sessionStorage.setItem('hasInitialized', 'true');
+        sessionStorage.setItem('ballCount', count);
+        location.reload();
+        return;
+    }
+
+    // Si ya se recargó, continuar normalmente
     if (!renderer) {
         initThreeJS();
     }
@@ -742,7 +752,6 @@ winnerBtn.addEventListener('click', () => grabBall('winner'));
 closeWinner.addEventListener('click', () => {
     winnerAnnouncement.classList.remove('show');
     
-    // Limpiar emojis
     fallingEmojis = [];
     isAnimatingEmojis = false;
     emojiCanvas.classList.remove('active');
@@ -756,6 +765,24 @@ closeWinner.addEventListener('click', () => {
     }
 });
 
+// Al cargar la página, verificar si venimos de una recarga del botón
 window.addEventListener('load', () => {
-    showStatus('¡Bienvenido al sorteo navideño! ❄️ Ingresa la cantidad de bolitas', 'info');
+    const savedCount = sessionStorage.getItem('ballCount');
+    
+    if (savedCount) {
+        // Si hay un valor guardado, significa que venimos de una recarga
+        ballCountInput.value = savedCount;
+        sessionStorage.removeItem('ballCount');
+        
+        // Inicializar automáticamente después de la recarga
+        if (!renderer) {
+            initThreeJS();
+        }
+        createBalls(parseInt(savedCount));
+        mixButton.disabled = false;
+        grabButton.disabled = true;
+        showStatus(`${savedCount} bolitas inicializadas correctamente 🎄`, 'success');
+    } else {
+        showStatus('¡Bienvenido al sorteo navideño! ❄️ Ingresa la cantidad de bolitas', 'info');
+    }
 });
